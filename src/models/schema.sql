@@ -13,8 +13,14 @@ CREATE TABLE todos (
     title TEXT NOT NULL,
     streak INT NOT NULL DEFAULT 0,
     last_completed DATE,
+    streak_required INT NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT now()
 )
+
+CREATE TYPE todo_status AS ENUM ('active', 'paused', 'completed');
+
+ALTER TABLE todos 
+ADD COLUMN status todo_status NOT NULL DEFAULT 'active';
 
 CREATE TABLE todo_completions (
     id UUID PRIMARY KEY,
@@ -22,3 +28,14 @@ CREATE TABLE todo_completions (
     completed_at TIMESTAMP DEFAULT now()
 )
 
+CREATE TABLE commitments (
+    id UUID PRIMARY KEY,
+    todo_id UUID,
+    stake_amount BIGINT,
+    vault_pubkey TEXT,
+    start_date DATE,
+    last_checkin DATE,
+    streak_current INT,
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+    created_at TIMESTAMP DEFAULT now()
+)
