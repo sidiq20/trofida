@@ -1,70 +1,65 @@
-use axum::{Router, routing::get};
+mod db;
+mod errors;
+mod graphql;
+mod models;
+mod schema;
+mod utils;
+
+use axum::{
+    routing::{get, post},
+    Router, Extension,
+};
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
-use async_graphql::http::GraphiQLSource;
-use axum::response::Html;
-use dotenvy::dotenv;
+use async_graphql::http::{playground_source, GraphQLPlaygroundConfig};
+use axum::response::{Html, IntoResponse};
 use std::env;
 use tokio::net::TcpListener;
-
-mod schema;
-mod graphql;
-mod db;
-mod models;
-mod utils;
-mod errors;
-mod routes;
-mod handlers;
-
-use axum::http::HeaderMap;
+use db::connect_db;
+use schema::{build_schema, AppSchema};
 
 async fn graphql_handler(
-    axum::extract::Extension(schema): axum::extract::Extension<schema::AppSchema>,
-    headers: HeaderMap,
+    Extension(schema): Extension<AppSchema>,
+    headers: axum::http::HeaderMap,
     req: GraphQLRequest,
 ) -> GraphQLResponse {
-    let mut request = req.into_inner();
-    
-    // Attempt to extract potential AuthUser from headers
-    if let Some(auth_header) = headers.get(axum::http::header::AUTHORIZATION) {
-        if let Ok(token_str) = auth_header.to_str() {
-             if let Some(token) = token_str.strip_prefix("Bearer ") {
-                 if let Ok(claims) = utils::jwt::decode_jwt(token) {
-                     let user = utils::authuser::AuthUser { id: claims.sub };
-                     request = request.data(user);
-                 }
-             }
+    let mut req = req.into_inner();
+
+    if let Some(auth_header) = headers.get("Authorization") {
+        if let Ok(auth_str) = auth_header.to_str() {
+            if auth_str.starts_with("Bearer ") {
+                let token = &auth_str[7..];
+                if let Ok(claims) = crate::utils::jwt::decode_jwt(token) {
+                    req = req.data(crate::utils::authuser::AuthUser { id: claims.sub });
+                }
+            }
         }
     }
 
-    schema.execute(request).await.into()
+    schema.execute(req).await.into()
 }
 
-async fn graphiql() -> Html<String> {
-    Html(
-        GraphiQLSource::build()
-            .endpoint("/graphql")
-            .finish(),
-    )
+async fn graphql_playground() -> impl IntoResponse {
+    Html(playground_source(GraphQLPlaygroundConfig::new("/graphql")))
 }
 
 #[tokio::main]
 async fn main() {
-    dotenv().ok();
+    dotenvy::dotenv().ok();
 
-    let db_url = env::var("DATABASE_URL").expect("DATABASE_URL missing");
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let pool = connect_db(&database_url).await.expect("Failed to connect to DB");
 
-    let pool = db::connect_db(&db_url)
-        .await
-        .expect("Failed to connect to database");
+    // Build the schema
+    let schema = build_schema(pool);
 
-    let schema = schema::build_schema(pool);
-
+    // Build our application with a route
     let app = Router::new()
-        .route("/graphql", get(graphiql).post(graphql_handler))
-        .layer(axum::Extension(schema));
+        .route("/", get(graphql_playground))
+        .route("/graphql", post(graphql_handler))
+        .layer(Extension(schema));
+
+    println!("Server started at http://localhost:3000");
 
     let listener = TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    println!("🚀 GraphQL running at http://localhost:3000/graphql");
-
     axum::serve(listener, app).await.unwrap();
 }

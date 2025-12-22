@@ -1,4 +1,6 @@
-use jsonwebtoken::{encode, decode, Header, Validation, EncodingKey, DecodingKey};
+use jsonwebtoken::{
+    encode, decode, Header, Validation, EncodingKey, DecodingKey, Algorithm
+};
 use serde::{Serialize, Deserialize};
 use std::env;
 use uuid::Uuid;
@@ -10,29 +12,30 @@ pub struct Claims {
     pub exp: usize,
 }
 
-pub fn create_jwt(user_id: Uuid) -> String {
+pub fn create_jwt(user: Uuid) -> Result<String, jsonwebtoken::errors::Error> {
     let secret = env::var("JWT_SECRET").expect("JWT_SECRET missing");
 
     let claims = Claims {
-        sub: user_id,
+        sub: user,
         exp: (Utc::now() + Duration::days(7)).timestamp() as usize,
     };
 
     encode(
-        &Header::default(),
+        &Header::new(Algorithm::HS256),
         &claims,
-        &EncodingKey::from_secret(secret.as_ref()),
+        &EncodingKey::from_secret(secret.as_bytes()),
     )
-    .unwrap()
 }
 
 pub fn decode_jwt(token: &str) -> Result<Claims, jsonwebtoken::errors::Error> {
-    let secret = env::var("JWT_SECRET").expect("JWT_SECRET missing");
+    let secret = env::var("JWT_SECRET").expect("JWT SECRET IS MISSING");
 
+    let validation = Validation::new(Algorithm::HS256);
+    
     let data = decode::<Claims>(
         token,
-        &DecodingKey::from_secret(secret.as_ref()),
-        &Validation::default(),
+        &DecodingKey::from_secret(secret.as_bytes()),
+        &validation,
     )?;
 
     Ok(data.claims)

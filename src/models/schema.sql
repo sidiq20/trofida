@@ -5,7 +5,7 @@ CREATE TABLE users (
     email TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT now()
-)
+);
 
 CREATE TABLE todos (
     id UUID PRIMARY KEY,
@@ -15,7 +15,7 @@ CREATE TABLE todos (
     last_completed DATE,
     streak_required INT NOT NULL DEFAULT 0,
     created_at TIMESTAMP DEFAULT now()
-)
+);
 
 CREATE TYPE todo_status AS ENUM ('active', 'paused', 'completed');
 
@@ -26,7 +26,7 @@ CREATE TABLE todo_completions (
     id UUID PRIMARY KEY,
     todo_id UUID REFERENCES todos(id) ON DELETE CASCADE,
     completed_at TIMESTAMP DEFAULT now()
-)
+);
 
 CREATE TABLE commitments (
     id UUID PRIMARY KEY,
@@ -38,4 +38,4 @@ CREATE TABLE commitments (
     streak_current INT,
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT now()
-)
+);

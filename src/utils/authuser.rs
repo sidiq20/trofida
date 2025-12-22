@@ -1,10 +1,10 @@
 use axum::{
-    async_trait,
     extract::FromRequestParts,
     http::request::Parts,
 };
 use uuid::Uuid;
-use crate::auth::AuthUser;
+
+
 
 use crate::{
     utils::jwt::decode_jwt,
@@ -16,7 +16,7 @@ pub struct AuthUser {
     pub id: Uuid,
 }
 
-#[async_trait]
+
 impl<S> FromRequestParts<S> for AuthUser
 where
     S: Send + Sync,
