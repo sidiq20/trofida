@@ -12,12 +12,31 @@ mod db;
 mod models;
 mod utils;
 mod errors;
+mod routes;
+mod handlers;
+
+use axum::http::HeaderMap;
 
 async fn graphql_handler(
     axum::extract::Extension(schema): axum::extract::Extension<schema::AppSchema>,
+    headers: HeaderMap,
     req: GraphQLRequest,
 ) -> GraphQLResponse {
-    schema.execute(req.into_inner()).await.into()
+    let mut request = req.into_inner();
+    
+    // Attempt to extract potential AuthUser from headers
+    if let Some(auth_header) = headers.get(axum::http::header::AUTHORIZATION) {
+        if let Ok(token_str) = auth_header.to_str() {
+             if let Some(token) = token_str.strip_prefix("Bearer ") {
+                 if let Ok(claims) = utils::jwt::decode_jwt(token) {
+                     let user = utils::authuser::AuthUser { id: claims.sub };
+                     request = request.data(user);
+                 }
+             }
+        }
+    }
+
+    schema.execute(request).await.into()
 }
 
 async fn graphiql() -> Html<String> {
@@ -34,7 +53,6 @@ async fn main() {
 
     let db_url = env::var("DATABASE_URL").expect("DATABASE_URL missing");
 
-    // ✅ unwrap ONCE here
     let pool = db::connect_db(&db_url)
         .await
         .expect("Failed to connect to database");

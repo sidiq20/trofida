@@ -3,6 +3,15 @@ use sqlx::FromRow;
 use uuid::Uuid;
 use chrono::{NaiveDate, NaiveDateTime};
 use async_graphql::{SimpleObject, InputObject};
+use std::str::FromStr;
+
+#[derive(Debug, Serialize, Deserialize, Clone, Copy, PartialEq, Eq, Hash, Type)]
+#[sqlx(type_name = "todo_status", rename_all = "lowercase")]
+pub enum TodoStatus {
+    Active,
+    Paused,
+    Completed,
+}
 
 
 #[derive(Debug, Serialize, SimpleObject, FromRow)]
@@ -20,6 +29,7 @@ pub struct Todo {
     pub streak: i32,
     pub last_completed: Option<NaiveDate>,
     pub streak_required: i32,
+    pub status: TodoStatus,
     pub created_at: NaiveDateTime,
 }
 
