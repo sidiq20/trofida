@@ -17,6 +17,8 @@ use tokio::net::TcpListener;
 use db::connect_db;
 use schema::{build_schema, AppSchema};
 
+use tracing::{info, warn, error};
+
 async fn graphql_handler(
     Extension(schema): Extension<AppSchema>,
     headers: axum::http::HeaderMap,
@@ -28,9 +30,16 @@ async fn graphql_handler(
         if let Ok(auth_str) = auth_header.to_str() {
             if auth_str.starts_with("Bearer ") {
                 let token = &auth_str[7..];
-                if let Ok(claims) = crate::utils::jwt::decode_jwt(token) {
-                    req = req.data(crate::utils::authuser::AuthUser { id: claims.sub });
+                 match crate::utils::jwt::decode_jwt(token) {
+                    Ok(claims) => {
+                        req = req.data(crate::utils::authuser::AuthUser { id: claims.sub });
+                    }
+                    Err(e) => {
+                        warn!("Failed to decode JWT: {}", e);
+                    }
                 }
+            } else {
+                warn!("Authorization header missing 'Bearer ' prefix. Received: {}", auth_str);
             }
         }
     }
@@ -44,6 +53,10 @@ async fn graphql_playground() -> impl IntoResponse {
 
 #[tokio::main]
 async fn main() {
+
+    // Initialize tracing
+    tracing_subscriber::fmt::init();
+
     dotenvy::dotenv().ok();
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");

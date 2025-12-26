@@ -2,7 +2,8 @@ use async_graphql::{Object, Context, InputObject, SimpleObject, Error};
 use sqlx::PgPool;
 use uuid::Uuid;
 use crate::models::todo::{Todo, CreateTodo, TodoStatus};
-use crate::utils::jwt::create_jwt; // using the utils implementation
+use crate::utils::jwt::create_jwt;
+use crate::utils::password::{hash_password, verify_password};
 
 #[derive(InputObject)]
 pub struct AuthPayload {
@@ -38,8 +39,8 @@ impl MutationRoot {
         // Let's assume standard behavior:
         
         let user_id = Uuid::new_v4();
-        // Placeholder hash - SHOULD be replaced with real hashing
-        let password_hash = format!("hashed_{}", input.password); 
+        let password_hash = hash_password(&input.password)
+            .map_err(|e| Error::new(format!("Failed to hash password: {}", e)))?; 
 
         sqlx::query!(
             r#"
@@ -75,10 +76,12 @@ impl MutationRoot {
         .map_err(|e| Error::new(e.to_string()))?
         .ok_or_else(|| Error::new("Invalid credentials"))?;
 
-        // Verify password (placeholder comparison matching the hash above)
-        // crate::utils::password::verify(...)
-        // For now, strict check:
-        // if user.password_hash != format!("hashed_{}", input.password) { ... }
+        let valid = verify_password(&input.password, &user.password_hash)
+            .map_err(|e| Error::new(format!("Password verification error: {}", e)))?;
+
+        if !valid {
+            return Err(Error::new("Invalid credentials"));
+        }
          
         let token = create_jwt(user.id)?;
         
