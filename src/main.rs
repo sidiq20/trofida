@@ -2,6 +2,7 @@ mod db;
 mod errors;
 mod graphql;
 mod models;
+mod domains; 
 mod schema;
 mod utils;
 
@@ -53,8 +54,6 @@ async fn graphql_playground() -> impl IntoResponse {
 
 #[tokio::main]
 async fn main() {
-
-    // Initialize tracing
     tracing_subscriber::fmt::init();
 
     dotenvy::dotenv().ok();
@@ -62,10 +61,8 @@ async fn main() {
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     let pool = connect_db(&database_url).await.expect("Failed to connect to DB");
 
-    // Build the schema
     let schema = build_schema(pool);
 
-    // Build our application with a route
     let app = Router::new()
         .route("/", get(graphql_playground))
         .route("/graphql", post(graphql_handler))

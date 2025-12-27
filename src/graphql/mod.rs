@@ -1,5 +1,11 @@
-pub mod query;
-pub mod mutation;
+use async_graphql::MergedObject;
 
-pub use query::QueryRoot;
-pub use mutation::MutationRoot;
+use crate::domains::auth::graphql::AuthMutation;
+use crate::domains::todo::graphql::{TodoQuery, TodoMutation};
+use crate::domains::staking::graphql::StakingMutation;
+
+#[derive(MergedObject, Default)]
+pub struct QueryRoot(pub TodoQuery);
+
+#[derive(MergedObject, Default)]
+pub struct MutationRoot(pub AuthMutation, pub TodoMutation, pub StakingMutation);
