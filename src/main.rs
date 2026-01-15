@@ -68,8 +68,8 @@ async fn main() {
         .route("/graphql", post(graphql_handler))
         .layer(Extension(schema));
 
-    println!("Server started at http://localhost:3000");
+    println!("Server started at http://localhost:3001");
 
-    let listener = TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    let listener = TcpListener::bind("0.0.0.0:3001").await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }

@@ -14,6 +14,7 @@ CREATE TABLE todos (
     streak INT NOT NULL DEFAULT 0,
     last_completed DATE,
     streak_required INT NOT NULL DEFAULT 0,
+    folder_id TEXT NOT NUll
     created_at TIMESTAMP DEFAULT now()
 );
 
@@ -39,3 +40,10 @@ CREATE TABLE commitments (
     is_active BOOLEAN NOT NULL DEFAULT TRUE,
     created_at TIMESTAMP DEFAULT now()
 );
+
+CREATE TABLE todo_folder (
+    id UUID PRIMARY KEY,
+    user_id UUID REFERENCES users(id) ON DELETE CASCADE,
+    name TEXT,
+    created_at DATE
+)
