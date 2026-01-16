@@ -17,6 +17,7 @@ impl TodoQuery {
             SELECT 
                 id, 
                 user_id as "user_id!", 
+                folder_id,
                 title, 
                 streak, 
                 last_completed, 
@@ -44,6 +45,7 @@ impl TodoQuery {
             SELECT 
                 id, 
                 user_id as "user_id!", 
+                folder_id,
                 title, 
                 streak, 
                 last_completed, 
@@ -78,7 +80,7 @@ impl TodoMutation {
             r#"
             INSERT INTO todos (id, user_id, title, streak_required, streak)
             VALUES ($1, $2, $3, $4, 0)
-            RETURNING id, user_id as "user_id!", title, streak, last_completed, streak_required, created_at as "created_at!", status as "status!: TodoStatus"
+            RETURNING id, user_id as "user_id!", folder_id, title, streak, last_completed, streak_required, created_at as "created_at!", status as "status!: TodoStatus"
             "#,
             Uuid::new_v4(),
             user.id,
@@ -102,7 +104,7 @@ impl TodoMutation {
             r#"UPDATE todos 
             SET last_completed = NOW(), streak = streak + 1 
             WHERE id = $1 AND user_id = $2
-            RETURNING id, user_id as "user_id!", title, streak, last_completed, streak_required, created_at as "created_at!", status as "status!: TodoStatus""#,
+            RETURNING id, user_id as "user_id!", folder_id, title, streak, last_completed, streak_required, created_at as "created_at!", status as "status!: TodoStatus""#,
             id,
             user.id
         )
