@@ -1,7 +1,8 @@
 use async_graphql::{Object, Context, Error};
 use sqlx::PgPool;
 use uuid::Uuid;
-use super::models::{Todo, CreateTodo, TodoStatus};
+use super::models::{Todo, CreateTodo, TodoStatus, TodoFolder, CreateTodoFolder};
+use super::service::TodoService;
 
 #[derive(Default)]
 pub struct TodoQuery;
@@ -32,6 +33,19 @@ impl TodoQuery {
         .map_err(|e| async_graphql::Error::new(e.to_string()))?;
         
         Ok(todos)
+    }
+
+    async fn folders(&self, ctx: &Context<'_>) ->
+    async_graphql::Result<Vec<TodoFolder>> {
+        let pool = ctx.data::<PgPool>()?;
+        let user = ctx.data::<crate::utils::authuser::AuthUser>()
+            .map_err(|_| Error::new("Unauthorized"))?;
+
+        let folders = TodoService::get_folder_for_user(pool, user.id)
+            .await
+            .map_err(|e| Error::new(e.to_string()))?;
+
+        Ok(folders)
     }
 
     async fn my_todos(&self, ctx: &Context<'_>) -> async_graphql::Result<Vec<Todo>> {
@@ -75,23 +89,24 @@ impl TodoMutation {
         let user = ctx.data::<crate::utils::authuser::AuthUser>()
             .map_err(|_| Error::new("Unauthorized: Please log in"))?;
         
-        let todo = sqlx::query_as!(
-            Todo,
-            r#"
-            INSERT INTO todos (id, user_id, title, streak_required, streak)
-            VALUES ($1, $2, $3, $4, 0)
-            RETURNING id, user_id as "user_id!", folder_id, title, streak, last_completed, streak_required, created_at as "created_at!", status as "status!: TodoStatus"
-            "#,
-            Uuid::new_v4(),
-            user.id,
-            input.title,
-            input.streak_required
-        )
-        .fetch_one(pool)
-        .await
-        .map_err(|e| Error::new(e.to_string()))?;
+        let todo = TodoService::create_todo(pool, user.id, input)
+            .await
+            .map_err(|e| Error::new(e.to_string()))?;
 
         Ok(todo)
+    }
+
+    async fn create_folder(&self, ctx: &Context<'_>, input: CreateTodoFolder) -> 
+    async_graphql::Result<TodoFolder> {
+        let pool = ctx.data::<PgPool>()?;
+        let user = ctx.data::<crate::utils::authuser::AuthUser>()
+            .map_err(|_| Error::new("Unauthorized: Please log in"))?;
+
+        let folder = TodoService::create_folder(pool, user.id, input)
+            .await
+            .map_err(|e| Error::new(e.to_string()))?;
+
+        Ok(folder)
     }
 
     async fn mark_completed(&self, ctx: &Context<'_>, id: Uuid) -> async_graphql::Result<Todo> {
