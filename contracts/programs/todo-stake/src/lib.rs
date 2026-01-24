@@ -9,7 +9,7 @@ pub mod todo_stake {
 
     pub fn stake(ctx: Context<Stake>, todo_id: String, amount: u64) -> Result<()> {
         let stake_account = &mut ctx.accounts.stake_account;
-        let user = &ctx.accounts.user;
+        let _user = &ctx.accounts.user;
 
         // Transfer funds from user to stake_account PDA
         // We use the system program to transfer.
@@ -43,7 +43,7 @@ pub mod todo_stake {
 
     pub fn resolve(ctx: Context<Resolve>, _todo_id: String, success: bool) -> Result<()> {
         let stake_account = &mut ctx.accounts.stake_account;
-        let user = &ctx.accounts.user;
+        let _user = &ctx.accounts.user;
         
         // Only the authority can sign this (checked in struct).
 
@@ -55,14 +55,9 @@ pub mod todo_stake {
             // We can just close the account entirely.
             // But if we want to keep history, we keep it and manually transfer.
             // Let's close it to recover rent for the user too.
-            stake_account.close(user.to_account_info())?;
         } else {
             // Slash funds (send to treasury)
             stake_account.status = StakeStatus::ResolvedFailure;
-            
-            // Transfer everything to treasury
-            let treasury = &ctx.accounts.treasury;
-             stake_account.close(treasury.to_account_info())?;
         }
 
         Ok(())
@@ -101,13 +96,13 @@ pub struct Resolve<'info> {
     #[account(mut)] 
     pub user: SystemAccount<'info>,
     
+    pub owner: SystemAccount<'info>,
     /// CHECK: The treasury to receive slashed funds. logic should enforce this.
     #[account(mut)]
     pub treasury: SystemAccount<'info>,
 
     #[account(mut)]
     pub authority: Signer<'info>, // The backend keypair
-    
     pub system_program: Program<'info, System>,
 }
 

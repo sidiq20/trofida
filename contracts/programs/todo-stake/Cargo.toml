@@ -9,7 +9,6 @@ crate-type = ["cdylib", "lib"]
 name = "todo_stake"
 
 [features]
-default = []
 cpi = ["no-entrypoint"]
 no-entrypoint = []
 no-idl = []
